@@ -1,0 +1,410 @@
+<!DOCTYPE HTML>
+<html lang="cs-CZ">
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta charset="UTF-8">
+
+    <link rel="stylesheet" href="css/styles.css" />
+    <script type="text/javascript" charset="utf-8" src="cordova-2.5.0.js"></script>
+    <script type="text/javascript" charset="utf-8" src="childbrowser.js"></script>
+    <script type="text/javascript" charset="utf-8" src="jsOAuth-1.3.6.js"></script>
+    <link rel="stylesheet" href="http://code.jquery.com/mobile/1.3.0/jquery.mobile-1.3.0.min.css" />
+    <script src="http://code.jquery.com/jquery-1.8.2.min.js"></script>
+    <script type="text/javascript">
+	    $( document ).bind( 'mobileinit', function(){
+	    	  $.mobile.loader.prototype.options.text = "loading";
+	    	  $.mobile.loader.prototype.options.textVisible = false;
+	    	  $.mobile.loader.prototype.options.theme = "a";
+	    	  $.mobile.loader.prototype.options.html = "";
+	    });
+    </script>
+    <script src="http://code.jquery.com/mobile/1.3.0/jquery.mobile-1.3.0.min.js"></script>
+  </head>
+  <body onload="onBodyLoad();">
+    <!-- LOGIN PAGE -->
+    <div data-role="page" id="login_page">
+      <div data-role="content" id="login_content">
+        <div id="buttons">
+          <button value="Login" id="login">Login</button>
+          <button value="Logout" id="logout">Logout</button>
+        </div>
+        <div class="ui-loader ui-corner-all ui-body-a ui-loader-default" style="display: block;">
+				 <span class="ui-icon ui-icon-loading"></span>
+ 					<h1>loading</h1>
+			</div>
+      </div>
+    </div>
+    <!-- TIMELINE PAGE -->
+    <div data-role="page" id="timeline_page">
+      <div data-role="header" id="timeline_head" data-nobackbtn="true">
+        <h1>BlueBirdGap</h1>
+        <h2>Timeline</h2>
+        <a id="timeline_button_back" data-icon="arrow-l" class="ui-btn-left" 
+        href="javascript:return true;" data-role="button" data-inline="true">Zpět</a>
+        <div data-role="controlgroup" class="ui-btn-right">
+          <a id="logout_button" data-icon="delete" data-role="button">Logout</a>
+          <a id="new_tweet_button" data-icon="plus" data-role="button" data-theme="b">Tweet</a>
+          <hr>
+        </div>
+      </div>
+      <div data-role="content" id="timeline_content">
+        <div id="new_tweet_area">
+          <textarea id="tweet_text"></textarea>
+          <button data-role="button" data-icon="plus" data-theme="b" class="ui-btn-right" onclick="Twitter.post()">Post</button>
+        </div>
+        <div id="home_timeline"></div>
+      </div>
+      <div data-role="footer" id="timeline_footer"></div>
+    </div>
+
+   <script type="text/javascript">
+		var EMPTY = '';
+		var STATUS = 'status';
+		var WHEN = 'created_at';
+		var SPACE = ' ';
+		var TEXT = 'text';
+		var HTML_FRG7 = '<tr><td>';
+		var HTML_FRG8 = '<hr></hr></td></tr>';
+		var EM1 = '<em>';
+		var EM2 = '</em> ';
+		var MAX_TWEETS = 11;
+		var TABLE_OPEN = '<table STYLE="border-spacing: 10pt 0pt">';
+		var TABLE_CLOSE = '</table>';
+		var HTTP = 'http://';
+		var A_OPEN = '<a href="';
+		var A_CLOSE1 = '"target="_blank">';
+		var A_CLOSE2 = '</a>';
+   	var requestObject;
+   	var oauth; // It Holds the oAuth data request
+   	var requestParams; // Specific param related to request
+   	var options = {
+		   consumerKey: '62CNtbtvkLCNg9NEApbMA', // YOUR Twitter CONSUMER_KEY
+		   consumerSecret: '0WqVc20na32OYESpl3alkTIEpvySQEtzZC51qbvrg', // YOUR Twitter CONSUMER_SECRET
+		   callbackUrl: "http://www.fit.cvut.cz" }; // YOU have to replace it on one more Place                   
+   	var twitterKey = "twtrKey"; // This key is used for storing Information related
+   	
+   	function onBodyLoad() {
+   		document.addEventListener("deviceready", onDeviceReady, false);
+   		
+   	}
+   	
+   	function onDeviceReady() {
+   		cb = window.plugins.childBrowser;
+   		$('html').addClass( "ui-loading" );
+   		
+   		if(localStorage.getItem(twitterKey)){
+   			showLogin(1);
+				$('div.ui-loader').show();
+				Twitter.timeline();
+				$.mobile.changePage('#timeline_page', {transition: "slide"});
+				$('div.ui-loader').hide();
+   		} else {
+   			showLogin(0);
+   		}
+   		
+   		if (cb != null) {
+	      cb.onLocationChange = function(loc){root.locChanged(loc);};
+	      cb.onClose = function(){root.onCloseBrowser()};
+	      cb.onOpenExternal = function(){root.onOpenExternal();};
+   	  }
+   	}
+   	
+   	var spin = 
+   	    function( what ){
+   	        if ( what == "show"){
+   	         		$.mobile.loading('show');
+   	            } else {
+   	            $.mobile.loading('hide');
+   	            }
+   	};
+   	
+   	function onCloseBrowser() {
+        console.log("onCloseBrowser!");
+    }
+   	
+   	function locChanged(loc) {
+        console.log("locChanged!");
+    }
+   	
+   	function onOpenExternal() {
+        console.log("onOpenExternal!");
+    }
+   	
+   	$(function() {
+   		$('#login').on('tap', Twitter.init);
+   	});
+   	
+   	$(function() {
+   		$('#logout').on('tap', logOut);
+   	});
+   	
+   	$(function() {
+   		$('#logout_button').on('tap', logOut);
+   	});
+   	
+   	$(function() {
+   		$('#timeline_button_back').on('tap', function () {
+   			showLogin(1, true);
+   	  });
+   	});
+   	
+   	$(function() {
+   		$('#new_tweet_button').on('tap', function () {
+   			$('#new_tweet_area').toggle();
+   			return true;
+   		});
+   	});
+   	
+   	var Twitter = {
+	    init:function(){
+	      // Apps storedAccessData , Apps Data in Raw format
+	      var storedAccessData, rawData = localStorage.getItem(twitterKey);
+	      // here we are going to check whether the data about user is already with us.
+	      if(localStorage.getItem(twitterKey) !== null){
+	        // when App already knows data
+	        storedAccessData = JSON.parse(rawData); //JSON parsing
+	        options.accessTokenKey = storedAccessData.accessTokenKey; // data will be saved when user first time signin
+	        options.accessTokenSecret = storedAccessData.accessTokenSecret; // data will be saved when user first first signin
+	                     
+	        // javascript OAuth take care of everything for app we need to provide just the options
+	        oauth = OAuth(options);
+	        oauth.get(
+	          'https://api.twitter.com/1.1/account/verify_credentials.json?skip_status=true',
+	          function(data) {
+	            var entry = JSON.parse(data.text);
+	            console.log("USERNAME: " + entry.screen_name);
+	          }
+	        );
+	      } else {
+	        // we have no data for save user
+	        oauth = OAuth(options);
+	        
+	        oauth.get(
+	          'https://api.twitter.com/oauth/request_token',
+	          function(data) {
+	            requestParams = data.text;
+	            cb.showWebPage('https://api.twitter.com/oauth/authorize?'+data.text); // This opens the Twitter authorization / sign in page
+	            cb.onLocationChange = function(loc){ Twitter.success(loc); }; // Here will will track the change in URL of ChildBrowser
+	          },
+	          function(data) {
+	            console.log("ERROR: "+data.text);
+	          }
+	        );
+	      }
+	    },
+	
+	    /*
+	    When ChildBrowser's URL changes we will track it here.
+	    We will also be acknowledged was the request is a successful or unsuccessful
+	    */
+	    success:function(loc){
+	    // Here the URL of supplied callback will Load
+	    /*
+	    Here Plugin will check whether the callback Url matches with the given Url
+	    */
+	    if (loc.indexOf("http://www.fit.cvut.cz") >= 0) {
+	       
+	      // Parse the returned URL
+	      var index, verifier = '';
+	      var params = loc.substr(loc.indexOf('?') + 1);
+	       
+	      params = params.split('&');
+	      for (var i = 0; i < params.length; i++) {
+	          var y = params[i].split('=');
+	          if(y[0] === 'oauth_verifier') {
+	              verifier = y[1];
+	          }
+	      }
+	
+	      // Here we are going to change token for request with token for access
+	
+	      /*
+	      Once user has authorised us then we have to change the token for request with token of access
+	      here we will give data to localStorage.
+	      */
+	      oauth.get(
+	        'https://api.twitter.com/oauth/access_token?oauth_verifier='+verifier+'&'+requestParams,
+	        function(data) {
+	          var accessParams = {};
+	          var qvars_tmp = data.text.split('&');
+	
+	          for (var i = 0; i < qvars_tmp.length; i++) {
+	            var y = qvars_tmp[i].split('=');
+	            accessParams[y[0]] = decodeURIComponent(y[1]);
+	          }
+	
+	          oauth.setAccessToken([accessParams.oauth_token, accessParams.oauth_token_secret]);
+	
+	          // Saving token of access in Local_Storage
+	          var accessData = {};
+	          accessData.accessTokenKey = accessParams.oauth_token;
+	          accessData.accessTokenSecret = accessParams.oauth_token_secret;
+	
+	          // Configuring Apps LOCAL_STORAGE
+	          console.log("TWITTER: Storing token key/secret in localStorage");
+	          localStorage.setItem(twitterKey, JSON.stringify(accessData));
+	
+	          oauth.get(
+	            'https://api.twitter.com/1.1/account/verify_credentials.json?skip_status=true',
+	            function(data) {
+	              var entry = JSON.parse(data.text);
+	              console.log("TWITTER USER: "+entry.screen_name);
+	
+	              $('div.ui-loader').show();
+	              Twitter.get_timeline();
+	              $.mobile.changePage('#timeline_page', {transition: "slide"});
+	              $('div.ui-loader').hide();
+	            },
+	            function(data) {
+	              console.log("ERROR: " + data);
+	            }
+	          );
+	
+	          // Now we have to close the child browser because everthing goes on track.
+	          window.plugins.childBrowser.close();
+	        },
+	        function(data) {
+	          console.log(data);
+	        }
+	      );
+	    } else {
+	      // Just Empty
+	    }
+	  },
+	  
+	  tweet:function(){
+	      var storedAccessData, rawData = localStorage.getItem(twitterKey);
+
+	      storedAccessData = JSON.parse(rawData); // Paring Json
+	      options.accessTokenKey = storedAccessData.accessTokenKey; // it will be saved on first signin
+	      options.accessTokenSecret = storedAccessData.accessTokenSecret; // it will be save on first login
+
+	      // javascript OAuth will care of else for app we need to send only the options
+	      oauth = OAuth(options);
+	      oauth.get(
+	        'https://api.twitter.com/1.1/account/verify_credentials.json?skip_status=true',
+	        function(data) {
+	          var entry = JSON.parse(data.text);
+	          Twitter.post();
+	        }
+	      );
+	    },
+
+	    /*
+	    We now have the data to tweet
+	    */
+	    post:function(){
+	      var theTweet = $('#tweet_text').val();
+
+	      oauth.post(
+	        'https://api.twitter.com/1.1/statuses/update.json',
+	        {'status' : theTweet,  // javascript OAuth encodes this
+	        'trim_user' : 'true'},
+	        function(data) {
+	          var entry = JSON.parse(data.text);
+
+	          done();
+	        },
+	        function(data) {
+	          console.log(data.text);
+	        }
+	      );
+	    },
+	  
+	  timeline:function() {
+	      var storedAccessData, rawData = localStorage.getItem(twitterKey);
+
+	      storedAccessData = JSON.parse(rawData); // Paring Json
+	      options.accessTokenKey = storedAccessData.accessTokenKey; // it will be saved on first signin
+	      options.accessTokenSecret = storedAccessData.accessTokenSecret; // it will be save on first login
+
+	      // javascript OAuth will care of else for app we need to send only the options
+	      oauth = OAuth(options);
+	      oauth.get(
+	        'https://api.twitter.com/1.1/account/verify_credentials.json?skip_status=true',
+	        function(data) {
+	          var entry = JSON.parse(data.text);
+	          Twitter.get_timeline();
+	          return;
+	        }
+	      );
+	    },
+
+	    get_timeline:function() {
+
+	      oauth.get(
+	        'https://api.twitter.com/1.1/statuses/home_timeline.json',
+	        function(data) {
+	          populateTweetItems(data);
+	        },
+	        function(data) {
+	          console.log(data.text);
+	        }
+	      );
+
+	    }
+   	}
+   	
+   	function populateTweetItems(data) {
+   	    var entries = JSON.parse(data.text);
+   	    var tmpTxt = EMPTY;
+   	    var indx = 0;
+   	    var datum_pole;
+   	    
+   	    for (var i = 0; i < entries.length; i++) {
+   	      datum_pole = entries[i].created_at.split(" ");
+   	      tmpTxt = tmpTxt +"<p id =\"tweet_container\"><img id=\"profil\" src=\""+entries[i].user.profile_image_url+"\" /><span id=\"jmeno\">"
+   	      +entries[i].user.name+"&nbsp;&nbsp;<span id=\"screen_name\">@"+entries[i].user.screen_name
+   	      +"</span></span><span id=\"datum\">"+datum_pole[0]+"&nbsp;"+datum_pole[1]+"&nbsp;"
+   	      +datum_pole[2]+"&nbsp;"+datum_pole[3]+"</span><span id=\"tweet\">"+linkifyTweet(entries[i].text)
+   	      +"</span></p>";
+   	    };
+
+   	    $('#home_timeline').html(tmpTxt);
+   	    return;
+   	}
+   	
+   	function linkifyTweet(tweet) {
+   	    var split_tweet = tweet.split(SPACE);
+   	    for (var i = 0; i < split_tweet.length; i++) {
+   	      var tmpTxt = split_tweet[i];
+   	      if (tmpTxt.indexOf(HTTP) == 0) {
+   	        split_tweet[i] = A_OPEN + split_tweet[i] + A_CLOSE1 + split_tweet[i] + A_CLOSE2;
+   	      }
+   	    };
+
+   	    return split_tweet.join(SPACE);
+   	}
+   	
+   	function done(){
+   	    $("#tweet_text").val('');
+   	    $('#new_tweet_area').hide();
+   	}
+   	
+   	function showLogin(state, reverse) {
+   		if (state == 0) {
+   	      $("#logout").parent().hide();
+   	      $("#login").parent().show();
+   	    } else if (state == 1) {
+   	      $("#login").parent().hide();
+   	      $("#logout").parent().show();
+   	  }
+   		
+   		if(reverse) {
+   			$.mobile.changePage('#login_page', {transition: "slide", reverse: reverse});
+   			return;
+   		}
+   		$.mobile.changePage('#login_page');
+   	}
+   	
+   	function logOut(){
+	    options.accessTokenKey = '';
+	    options.accessTokenSecret = '';
+	    window.localStorage.removeItem(twitterKey);
+	    showLogin(0, true);
+   	}
+   </script>
+    
+  </body>
+</html>

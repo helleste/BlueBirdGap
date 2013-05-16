@@ -1,0 +1,70 @@
+p {
+	margin: 0;
+	padding: 0;
+}
+
+#home_timeline img {
+	display: inline;
+}
+
+#login_page {
+	background-color: #00ACED;
+	background-image: url('../img/twitter-bird-white-on-blue.png');
+	background-position: center top;
+	background-repeat: no-repeat;
+}
+
+#progress_content {
+	height: 28em;
+	background-image: url('../img/wait.gif');
+	background-position: center;
+	background-repeat: no-repeat;
+}
+
+#buttons {
+	position: relative;
+	margin-top: 10em;
+}
+
+#progress_image_wait {
+	display: block;
+	margin-left: auto;
+	margin-right: auto;
+}
+
+#jmeno {
+	display: block;
+	font-weight: bold;
+	font-size: 0.9em;
+}
+
+#profil {
+	float: left;
+	margin-right: 5px;
+}
+
+#screen_name {
+	/*font-size: 10px;*/
+	color: #3293BC;
+	font-weight: normal;
+	font-size: 0.8em;
+}
+
+#datum {
+	display: block;
+	margin-bottom: 5px;
+	font-size: 0.7em;
+}
+
+#tweet_container {
+	margin-bottom: 10px;
+}
+
+#tweet {
+	font-size: 0.8em;
+}
+
+#new_tweet_area {
+	display: none;
+	margin-bottom: 15px;
+}
